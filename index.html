@@ -209,6 +209,68 @@ body {
 .settings-sheet .btn-row .btn { flex: 1; }
 .btn-secondary { background: var(--bg); color: var(--text); }
 
+/* 查看更多按钮 */
+.btn-more {
+  display: block; width: 100%; padding: 10px; margin-top: 8px;
+  border: none; border-radius: var(--radius-sm); text-align: center;
+  font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font);
+  background: var(--bg); color: var(--primary); transition: background 0.15s;
+}
+.btn-more:active { background: var(--primary-light); }
+
+/* Calendar Overlay */
+.calendar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.4); justify-content: center; align-items: flex-end;
+}
+.calendar-overlay.show { display: flex; }
+.cal-sheet {
+  background: var(--card); border-radius: 16px 16px 0 0; width: 100%;
+  max-width: 500px; padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: slideUp 0.25s ease; max-height: 85vh; overflow-y: auto;
+}
+.cal-header {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-bottom: 16px; position: relative;
+}
+.cal-month { font-size: 16px; font-weight: 600; color: var(--text); }
+.cal-nav {
+  width: 32px; height: 32px; border: none; border-radius: 8px;
+  background: var(--bg); color: var(--text); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-nav:active { background: var(--separator); }
+.cal-close {
+  position: absolute; right: 0; width: 32px; height: 32px; border: none;
+  border-radius: 8px; background: transparent; font-size: 18px; cursor: pointer;
+  color: var(--text-secondary);
+}
+.cal-close:active { background: var(--bg); }
+.cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; font-size: 11px; color: var(--text-tertiary);
+  font-weight: 500; margin-bottom: 6px;
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-cell {
+  text-align: center; padding: 8px 2px; border-radius: 8px;
+  font-size: 14px; color: var(--text); cursor: pointer; position: relative;
+  min-height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.cal-cell.empty { cursor: default; }
+.cal-cell.today { font-weight: 700; color: var(--primary); }
+.cal-cell.has-record::after {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--primary); margin-top: 2px;
+}
+.cal-cell.selected { background: var(--primary); color: #fff; }
+.cal-cell.selected::after { background: #fff; }
+.cal-day-records { margin-top: 14px; }
+.cal-day-records .cal-day-title {
+  font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px;
+}
+.cal-day-records .cal-empty { text-align: center; padding: 16px; color: var(--text-tertiary); font-size: 13px; }
+
 /* AI result card */
 .ai-result {
   background: var(--primary-light); border: 1px solid var(--primary);
@@ -222,6 +284,13 @@ body {
 .ai-loading .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--separator); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .ai-error { text-align: center; padding: 16px; color: var(--danger); font-size: 13px; }
+
+.btn-add-to-list {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--primary); cursor: pointer; font-family: var(--font);
+  background: var(--card); color: var(--primary); transition: all 0.15s;
+}
+.btn-add-to-list:active { background: var(--primary-light); }
 
 /* ===== Exercise ===== */
 .exercise-type-group { margin-bottom: 16px; }
@@ -317,6 +386,7 @@ body {
   border-radius: 8px; font-size: 16px; font-family: var(--font);
   color: var(--text); background: var(--card); outline: none;
 }
+input[type="date"] { max-width: 170px; }
 .form-field input:focus, .form-field select:focus { border-color: var(--primary); }
 
 .toggle-row {
@@ -403,6 +473,16 @@ body {
     <div class="card-title"><span class="icon">🧘</span>压力管理</div>
     <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>腹式深呼吸</b>：吸气4秒 → 憋气4秒 → 呼气6秒，每天2-3次，每次5分钟</span></div>
     <div class="highlight-item"><span class="highlight-dot orange"></span><span class="highlight-text"><b>降低完美主义</b>：运动「动10分钟也算数」，饮食「这一餐比上一餐好一点就行」</span></div>
+  </div>
+
+  <!-- 数据备份 -->
+  <div class="card" style="text-align:center;padding:12px 16px;">
+    <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">💾 数据备份</div>
+    <div class="btn-row" style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" id="btnExport" style="font-size:13px;">📤 导出</button>
+      <button class="btn btn-secondary" id="btnImport" style="font-size:13px;">📥 导入</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
   </div>
 </div>
 
@@ -508,6 +588,23 @@ body {
       <button class="btn btn-primary" id="btnSettingsSave">保存</button>
     </div>
     <div id="settingsStatus" style="font-size:12px;margin-top:8px;text-align:center;"></div>
+  </div>
+</div>
+
+<!-- Calendar Overlay -->
+<div class="calendar-overlay" id="calOverlay">
+  <div class="cal-sheet" onclick="event.stopPropagation()">
+    <div class="cal-header">
+      <button class="cal-nav" id="calPrev">◀</button>
+      <span class="cal-month" id="calMonth"></span>
+      <button class="cal-nav" id="calNext">▶</button>
+      <button class="cal-close" id="calClose">✕</button>
+    </div>
+    <div class="cal-weekdays">
+      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-day-records" id="calDayRecords"></div>
   </div>
 </div>
 
@@ -810,6 +907,28 @@ var foodDB = [
 ];
 
 // ============================
+// 自定义食物（用户通过AI搜索添加）
+// ============================
+var CUSTOM_FOOD_KEY = 'ir_custom_foods';
+function loadCustomFoods() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_FOOD_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveCustomFoods(list) {
+  localStorage.setItem(CUSTOM_FOOD_KEY, JSON.stringify(list));
+}
+function mergeCustomFoods() {
+  var custom = loadCustomFoods();
+  // 去重：已存在同名的跳过
+  var existingNames = {};
+  foodDB.forEach(function(f) { existingNames[f.name] = true; });
+  custom.forEach(function(f) {
+    if (!existingNames[f.name]) foodDB.push(f);
+  });
+}
+mergeCustomFoods();
+
+// ============================
 // 运动类型（预设 + 自定义）
 // ============================
 var CUSTOM_EX_KEY = 'ir_custom_exercises';
@@ -892,6 +1011,7 @@ function saveBody() { localStorage.setItem('ir_body', JSON.stringify(state.bodyR
 function init() {
   loadData();
   initSettings();
+  initBackup();
   initTabBar();
   initFoodSearch();
   initExerciseTracking();
@@ -920,19 +1040,26 @@ function switchTab(tab) {
 // ============================
 // 食物查询
 // ============================
-function initFoodSearch() {
+var activeFoodCat = '全部';
+
+function renderCatChips() {
   var cats = ['全部'].concat(Array.from(new Set(foodDB.map(function(f) { return f.cat; }))));
   var catCtr = document.getElementById('catFilters');
-  catCtr.innerHTML = cats.map(function(c, i) {
-    return '<span class="cat-chip' + (i === 0 ? ' active' : '') + '" data-cat="' + c + '">' + c + '</span>';
+  catCtr.innerHTML = cats.map(function(c) {
+    var active = (c === activeFoodCat) ? ' active' : '';
+    return '<span class="cat-chip' + active + '" data-cat="' + c + '">' + c + '</span>';
   }).join('');
+}
 
-  var activeCat = '全部';
+function initFoodSearch() {
+  renderCatChips();
+  var catCtr = document.getElementById('catFilters');
+
   catCtr.addEventListener('click', function(e) {
     if (!e.target.classList.contains('cat-chip')) return;
     catCtr.querySelectorAll('.cat-chip').forEach(function(c) { c.classList.remove('active'); });
     e.target.classList.add('active');
-    activeCat = e.target.dataset.cat;
+    activeFoodCat = e.target.dataset.cat;
     filterFood();
   });
 
@@ -952,7 +1079,7 @@ function initFoodSearch() {
     if (q) results = results.filter(function(f) {
       return f.name.indexOf(q) >= 0 || f.note.indexOf(q) >= 0 || (f.alt || '').indexOf(q) >= 0;
     });
-    if (activeCat !== '全部') results = results.filter(function(f) { return f.cat === activeCat; });
+    if (activeFoodCat !== '全部') results = results.filter(function(f) { return f.cat === activeFoodCat; });
     renderFoodResults(results, q);
   }
   renderFoodResults(foodDB, '');
@@ -1157,18 +1284,24 @@ function renderWeekSummary() {
       '<div class="day-content">' + content + '</div></div>';
   }).join('');
 
-  // 最近记录
-  var recentRecords = state.exerciseRecords.slice().reverse().slice(0, 10);
+  // 最近记录（最多7条）
+  var allRecords = state.exerciseRecords.slice().reverse();
+  var recentRecords = allRecords.slice(0, 7);
+  var total = allRecords.length;
   var logEl = document.getElementById('exerciseLog');
   if (recentRecords.length === 0) {
     logEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-tertiary);font-size:13px;">还没有运动记录，开始第一次打卡吧</div>';
   } else {
-    logEl.innerHTML = '<div class="section-header" style="margin-top:16px;">最近记录</div>' + recentRecords.map(function(r) {
+    var html = '<div class="section-header" style="margin-top:16px;">最近记录</div>' + recentRecords.map(function(r) {
       return '<div class="log-item">' +
         '<span class="log-type">' + r.type + '<span class="log-cat">' + (r.category === 'aerobic' ? '有氧' : '抗阻') + '</span></span>' +
         '<span class="log-detail">' + r.date.slice(5) + ' · ' + r.duration + '分钟</span>' +
         '<span class="log-delete" data-date="' + r.date + '" data-idx="' + state.exerciseRecords.indexOf(r) + '" title="删除">🗑️</span></div>';
     }).join('');
+    if (total > 7) {
+      html += '<button class="btn-more" onclick="openCalendar(\'exercise\')">查看全部 ' + total + ' 条 ›</button>';
+    }
+    logEl.innerHTML = html;
     logEl.querySelectorAll('.log-delete').forEach(function(el) {
       el.addEventListener('click', function() {
         var idx = parseInt(el.dataset.idx);
@@ -1225,18 +1358,24 @@ function initBodyRecords() {
 
 function renderBodyRecords() {
   var list = document.getElementById('bodyRecordList');
-  var records = state.bodyRecords.slice().reverse().slice(0, 14);
+  var allRecords = state.bodyRecords.slice().reverse();
+  var records = allRecords.slice(0, 7);
+  var total = allRecords.length;
   if (records.length === 0) {
     list.innerHTML = '<div class="section-header">历史记录</div><div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:14px;">还没有记录，添加第一条吧</div>';
     return;
   }
-  list.innerHTML = '<div class="section-header">历史记录</div>' + records.map(function(r) {
+  var html = '<div class="section-header">历史记录</div>' + records.map(function(r) {
     var parts = [];
     if (r.weight) parts.push(r.weight + ' kg');
     if (r.waist) parts.push(r.waist + ' cm');
     var periodTag = r.isPeriod ? '<span class="record-period">🩸 经期</span>' : '';
     return '<div class="record-row"><span class="record-date">' + r.date.slice(5) + '</span><span class="record-values">' + parts.join(' / ') + periodTag + '</span><span class="record-delete" data-date="' + r.date + '" title="删除">🗑️</span></div>';
   }).join('');
+  if (total > 7) {
+    html += '<button class="btn-more" onclick="openCalendar(\'body\')">查看全部 ' + total + ' 条 ›</button>';
+  }
+  list.innerHTML = html;
 
   list.querySelectorAll('.record-delete').forEach(function(el) {
     el.addEventListener('click', function() {
@@ -1327,6 +1466,66 @@ function renderBodyChart() {
 // API 设置 & AI 查询
 // ============================
 var apiSettings = { key: '', model: 'deepseek-chat' };
+var lastAiFood = null;  // 暂存最近一次AI查询结果
+
+// ============================
+// 数据导出/导入
+// ============================
+function initBackup() {
+  document.getElementById('btnExport').addEventListener('click', function() {
+    var data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      exerciseRecords: state.exerciseRecords,
+      bodyRecords: state.bodyRecords,
+      customExercises: JSON.parse(localStorage.getItem(CUSTOM_EX_KEY) || '{"aerobic":[],"resistance":[]}'),
+      customFoods: loadCustomFoods()
+    };
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '胰岛素抵抗管理_备份_' + fmtLocalDate(new Date()) + '.json';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    showToast('✅ 已导出备份文件', 'success');
+  });
+
+  document.getElementById('btnImport').addEventListener('click', function() {
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var data = JSON.parse(ev.target.result);
+        if (!data.exerciseRecords || !data.bodyRecords) {
+          showToast('⚠️ 备份文件格式不正确', 'error'); return;
+        }
+        if (!window.confirm('即将恢复 ' + data.exerciseRecords.length + ' 条运动、' + data.bodyRecords.length + ' 条身体记录。当前数据将被覆盖。')) return;
+        state.exerciseRecords = data.exerciseRecords || [];
+        state.bodyRecords = data.bodyRecords || [];
+        saveExercise();
+        saveBody();
+        if (data.customExercises) { localStorage.setItem(CUSTOM_EX_KEY, JSON.stringify(data.customExercises)); }
+        if (data.customFoods) { localStorage.setItem(CUSTOM_FOOD_KEY, JSON.stringify(data.customFoods)); }
+        renderWeekSummary();
+        renderBodyRecords();
+        renderBodyChart();
+        initExerciseTracking();
+        showToast('✅ 已恢复', 'success');
+      } catch(err) { showToast('⚠️ 无法解析备份文件', 'error'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+}
 
 function initSettings() {
   // 加载已保存的 API Key
@@ -1405,7 +1604,9 @@ function queryAI(foodName) {
   btn.textContent = '⏳ AI 正在查询...';
   resultDiv.innerHTML = '<div class="ai-loading"><span class="spinner"></span>正在分析「' + foodName + '」对胰岛素抵抗的影响...</div>';
 
-  var prompt = '你是一个专业营养师，专门为胰岛素抵抗+糖耐量异常患者提供饮食建议。请分析以下食物，用严格JSON格式返回（不要markdown代码块，纯JSON）：\n{"name":"食物名","status":"推荐/适量/避免","gi":"低GI/中GI/高GI","giValue":"GI≈数值","reason":"简短说明（50字内）","alternative":"替代品建议（避免的食物才填，推荐和适量的填空字符串）"}\n\n食物：' + foodName;
+  var existingCats = Array.from(new Set(foodDB.map(function(f) { return f.cat; })));
+  var catList = existingCats.join('/');
+  var prompt = '你是一个专业营养师，专门为胰岛素抵抗+糖耐量异常患者提供饮食建议。请分析以下食物，用严格JSON格式返回（不要markdown代码块，纯JSON）：\n{"name":"食物名","cat":"必须从以下分类中选择：' + catList + '","status":"推荐/适量/避免","gi":"低GI/中GI/高GI","giValue":"GI≈数值","reason":"简短说明（50字内）","alternative":"替代品建议（避免的食物才填，推荐和适量的填空字符串）"}\n\n食物：' + foodName;
 
   fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -1439,6 +1640,8 @@ function queryAI(foodName) {
     if (m) jsonStr = m[1];
     var parsed = JSON.parse(jsonStr);
 
+    lastAiFood = parsed;
+
     var badgeHtml = '';
     if (parsed.status === '推荐') badgeHtml = '<span class="badge badge-safe">推荐</span>';
     else if (parsed.status === '适量') badgeHtml = '<span class="badge badge-warn">适量</span>';
@@ -1447,12 +1650,16 @@ function queryAI(foodName) {
 
     var altHtml = parsed.alternative ? '<div class="food-alt">✅ 替代：' + parsed.alternative + '</div>' : '';
     var giExtra = parsed.giValue ? ' <span style="font-size:11px;color:var(--text-tertiary);">(' + parsed.giValue + ')</span>' : '';
+    var catName = parsed.cat || '其他';
 
     resultDiv.innerHTML = '<div class="ai-result">' +
       '<div class="ai-label">🤖 AI 分析结果</div>' +
       '<div style="display:flex;align-items:center;gap:12px;">' +
         '<div class="food-info"><div class="food-name">' + parsed.name + giExtra + '</div><div class="food-detail">' + parsed.reason + '</div>' + altHtml + '</div>' +
         '<div class="food-badges">' + badgeHtml + '</div>' +
+      '</div>' +
+      '<div style="margin-top:12px;text-align:right;">' +
+        '<button class="btn-add-to-list" onclick="addAiFoodToList()" id="btnAddToList">➕ 添加到食物清单</button>' +
       '</div></div>';
 
     btn.classList.remove('loading');
@@ -1465,9 +1672,159 @@ function queryAI(foodName) {
   });
 }
 
+function addAiFoodToList() {
+  if (!lastAiFood) { showToast('⚠️ 没有可添加的食物数据', 'warning'); return; }
+  var f = lastAiFood;
+  var custom = loadCustomFoods();
+  // 检查是否已添加
+  var dup = custom.find(function(item) { return item.name === f.name; });
+  if (dup) { showToast('⚠️「' + f.name + '」已在食物清单中', 'warning'); return; }
+  // 也检查内置DB
+  var inDB = foodDB.find(function(item) { return item.name === f.name; });
+  if (inDB) { showToast('⚠️「' + f.name + '」已在食物清单中', 'warning'); return; }
+  // 优先匹配已有分类，无匹配则归入"其他"
+  var existingCats = Array.from(new Set(foodDB.map(function(item) { return item.cat; })));
+  var matchedCat = (f.cat && existingCats.indexOf(f.cat) >= 0) ? f.cat : '其他';
+  var newFood = {
+    name: f.name,
+    cat: matchedCat,
+    gi: f.gi || '中GI',
+    status: f.status || '适量',
+    note: f.reason || '',
+    alt: f.alternative || ''
+  };
+  custom.push(newFood);
+  saveCustomFoods(custom);
+  foodDB.push(newFood);
+  // 更新按钮状态
+  var btn = document.getElementById('btnAddToList');
+  if (btn) { btn.textContent = '✅ 已添加'; btn.disabled = true; btn.style.opacity = '0.6'; }
+  showToast('✅ 已添加「' + f.name + '」到食物清单', 'success');
+  // 刷新分类标签 + 当前视图
+  renderCatChips();
+  var searchInput = document.getElementById('foodSearch');
+  var q = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
+  var results = foodDB;
+  if (q) results = results.filter(function(item) {
+    return item.name.indexOf(q) >= 0 || item.note.indexOf(q) >= 0 || (item.alt || '').indexOf(q) >= 0;
+  });
+  if (activeFoodCat !== '全部') results = results.filter(function(f) { return f.cat === activeFoodCat; });
+  renderFoodResults(results, q);
+}
+
+// ============================
+// 日历查看（运动 & 身体记录）
+// ============================
+var calMode = 'exercise';  // 'exercise' | 'body'
+var calYear, calMonth;
+var calSelectedDate = null;
+
+function openCalendar(mode) {
+  calMode = mode;
+  var now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth() + 1;
+  calSelectedDate = null;
+  document.getElementById('calOverlay').classList.add('show');
+  renderCalendar();
+}
+
+function closeCalendar() {
+  document.getElementById('calOverlay').classList.remove('show');
+}
+
+function initCalendar() {
+  document.getElementById('calPrev').addEventListener('click', function() {
+    calMonth--; if (calMonth < 1) { calMonth = 12; calYear--; }
+    calSelectedDate = null;
+    renderCalendar();
+  });
+  document.getElementById('calNext').addEventListener('click', function() {
+    calMonth++; if (calMonth > 12) { calMonth = 1; calYear++; }
+    calSelectedDate = null;
+    renderCalendar();
+  });
+  document.getElementById('calClose').addEventListener('click', closeCalendar);
+  document.getElementById('calOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeCalendar();
+  });
+}
+
+function renderCalendar() {
+  document.getElementById('calMonth').textContent = calYear + '年' + calMonth + '月';
+
+  var records = calMode === 'exercise' ? state.exerciseRecords : state.bodyRecords;
+  // 按日期分组
+  var dateMap = {};
+  records.forEach(function(r) { dateMap[r.date] = true; });
+
+  var todayStr = fmtLocalDate(new Date());
+
+  // 当月第一天和最后一天
+  var firstDay = new Date(calYear, calMonth - 1, 1);
+  var lastDay = new Date(calYear, calMonth, 0);
+  var startDow = firstDay.getDay(); // 0=周日
+  var totalDays = lastDay.getDate();
+
+  var grid = document.getElementById('calGrid');
+  var html = '';
+
+  // 前置空白格
+  for (var i = 0; i < startDow; i++) {
+    html += '<div class="cal-cell empty"></div>';
+  }
+
+  // 日期格
+  for (var d = 1; d <= totalDays; d++) {
+    var dateStr = calYear + '-' + String(calMonth).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var cls = 'cal-cell';
+    if (dateStr === todayStr) cls += ' today';
+    if (dateMap[dateStr]) cls += ' has-record';
+    if (dateStr === calSelectedDate) cls += ' selected';
+    html += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="selectCalDate(\'' + dateStr + '\')">' + d + '</div>';
+  }
+
+  grid.innerHTML = html;
+  renderCalDayRecords();
+}
+
+function selectCalDate(dateStr) {
+  calSelectedDate = dateStr;
+  renderCalendar();
+}
+
+function renderCalDayRecords() {
+  var container = document.getElementById('calDayRecords');
+  if (!calSelectedDate) {
+    container.innerHTML = '<div class="cal-empty">点击日期查看记录</div>';
+    return;
+  }
+  var records = calMode === 'exercise' ? state.exerciseRecords : state.bodyRecords;
+  var dayRecords = records.filter(function(r) { return r.date === calSelectedDate; });
+  if (dayRecords.length === 0) {
+    container.innerHTML = '<div class="cal-empty">' + calSelectedDate + ' 无记录</div>';
+    return;
+  }
+  var title = '<div class="cal-day-title">' + (calMode === 'exercise' ? '🏃 运动记录' : '📊 身体记录') + ' · ' + calSelectedDate + '</div>';
+  if (calMode === 'exercise') {
+    container.innerHTML = title + dayRecords.map(function(r) {
+      return '<div class="log-item"><span class="log-type">' + r.type + '<span class="log-cat">' + (r.category === 'aerobic' ? '有氧' : '抗阻') + '</span></span><span class="log-detail">' + r.duration + '分钟</span></div>';
+    }).join('');
+  } else {
+    container.innerHTML = title + dayRecords.map(function(r) {
+      var parts = [];
+      if (r.weight) parts.push(r.weight + ' kg');
+      if (r.waist) parts.push(r.waist + ' cm');
+      var periodTag = r.isPeriod ? ' <span class="record-period">🩸</span>' : '';
+      return '<div class="record-row"><span class="record-values">' + parts.join(' / ') + periodTag + '</span></div>';
+    }).join('');
+  }
+}
+
 // ============================
 // 启动
 // ============================
+initCalendar();
 init();
 </script>
 </body>
