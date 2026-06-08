@@ -340,6 +340,61 @@ body {
 .btn:active { opacity: 0.8; }
 .btn-primary { background: var(--primary); color: #fff; }
 
+/* ===== AI Chat ===== */
+.chat-messages {
+  flex: 1; overflow-y: auto; padding-bottom: 8px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 0;
+}
+.chat-welcome {
+  text-align: center; padding: 32px 16px;
+}
+.chat-welcome-icon { font-size: 48px; margin-bottom: 12px; }
+.chat-welcome-text { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+.chat-bubble {
+  max-width: 85%; padding: 10px 14px; border-radius: 14px;
+  font-size: 14px; line-height: 1.6; word-break: break-word;
+  animation: fadeIn 0.2s ease;
+}
+.chat-bubble.user {
+  align-self: flex-end; background: var(--primary); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-bubble.ai {
+  align-self: flex-start; background: var(--card); color: var(--text);
+  border: 1px solid var(--separator); border-bottom-left-radius: 4px;
+}
+.chat-bubble.ai .chat-thinking {
+  display: flex; align-items: center; gap: 6px; color: var(--text-tertiary);
+  font-size: 13px;
+}
+.chat-thinking .dot-pulse { display: flex; gap: 3px; }
+.chat-thinking .dot-pulse span {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--text-tertiary);
+  animation: dotBounce 1.2s infinite ease-in-out;
+}
+.chat-thinking .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+.chat-thinking .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotBounce { 0%,80%,100% { transform: scale(0.6); } 40% { transform: scale(1); } }
+.chat-input-bar {
+  display: flex; gap: 8px; padding: 10px 0 0;
+  border-top: 0.5px solid var(--separator); margin-top: auto;
+  position: sticky; bottom: 0; background: var(--bg);
+}
+.chat-input-bar input {
+  flex: 1; padding: 10px 14px; border: 1.5px solid var(--separator);
+  border-radius: 20px; font-size: 15px; font-family: var(--font);
+  color: var(--text); background: var(--card); outline: none;
+}
+.chat-input-bar input:focus { border-color: var(--primary); }
+.chat-send-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: var(--primary); color: #fff; font-size: 16px;
+  cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.chat-send-btn:active { opacity: 0.8; }
+.chat-send-btn:disabled { opacity: 0.4; }
+
 .exercise-week { margin-top: 16px; }
 .week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .week-day {
@@ -576,6 +631,20 @@ input[type="date"] { max-width: 170px; }
   <div class="record-list" id="bodyRecordList"><div class="section-header">历史记录</div></div>
 </div>
 
+<!-- Tab: AI 助手 -->
+<div class="tab-panel" id="panel-ai" style="display:none;flex-direction:column;height:calc(100vh - 104px - env(safe-area-inset-bottom, 0px));">
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-welcome">
+      <div class="chat-welcome-icon">🤖</div>
+      <div class="chat-welcome-text">我是你的胰岛素抵抗管理助手<br>可以问我饮食、运动、血糖、胰岛素抵抗相关的任何问题</div>
+    </div>
+  </div>
+  <div class="chat-input-bar">
+    <input type="text" id="chatInput" placeholder="输入问题..." autocomplete="off" enterkeyhint="send">
+    <button class="chat-send-btn" id="chatSendBtn">➤</button>
+  </div>
+</div>
+
 <!-- Settings Overlay -->
 <div class="settings-overlay" id="settingsOverlay">
   <div class="settings-sheet" onclick="event.stopPropagation()">
@@ -617,6 +686,7 @@ input[type="date"] { max-width: 170px; }
   <div class="tab-item" data-tab="food"><span class="tab-icon">🥗</span>食物查询</div>
   <div class="tab-item" data-tab="exercise"><span class="tab-icon">🏃</span>运动记录</div>
   <div class="tab-item" data-tab="body"><span class="tab-icon">📊</span>身体记录</div>
+  <div class="tab-item" data-tab="ai"><span class="tab-icon">🤖</span>AI助手</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1050,6 +1120,9 @@ function switchTab(tab) {
   });
   document.querySelectorAll('.tab-panel').forEach(function(el) {
     el.classList.toggle('active', el.id === 'panel-' + tab);
+    if (el.id === 'panel-ai') {
+      el.style.display = (el.id === 'panel-' + tab) ? 'flex' : 'none';
+    }
   });
   if (tab === 'body') renderBodyChart();
 }
@@ -1846,8 +1919,128 @@ function renderCalDayRecords() {
 }
 
 // ============================
+// AI 助手聊天
+// ============================
+var CHAT_KEY = 'ir_chat_messages';
+var chatMessages = [];
+
+function loadChat() {
+  try { chatMessages = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]'); }
+  catch(e) { chatMessages = []; }
+}
+function saveChat() { localStorage.setItem(CHAT_KEY, JSON.stringify(chatMessages)); }
+
+function initChat() {
+  loadChat();
+  var input = document.getElementById('chatInput');
+  var btn = document.getElementById('chatSendBtn');
+  var msgContainer = document.getElementById('chatMessages');
+
+  renderChat();
+
+  function send() {
+    var text = input.value.trim();
+    if (!text) return;
+    if (!apiSettings.key) {
+      document.getElementById('settingsOverlay').classList.add('show');
+      document.getElementById('settingsStatus').textContent = '⚠️ 请先设置 API Key';
+      document.getElementById('apiKeyInput').focus();
+      return;
+    }
+    input.value = '';
+    btn.disabled = true;
+
+    // 添加用户消息
+    chatMessages.push({ role: 'user', content: text });
+    saveChat();
+    // 添加 AI 占位
+    chatMessages.push({ role: 'assistant', content: '', thinking: true });
+    renderChat();
+    scrollToBottom();
+
+    var messages = [
+      { role: 'system', content: '你是「胰岛素抵抗管理助手」，专门为胰岛素抵抗、糖耐量异常、PCOS等代谢问题的用户提供饮食、运动和生活方式的专业建议。\n\n核心规则：\n1. 只回答与胰岛素抵抗、血糖管理、代谢健康相关的问题\n2. 如果用户的问题明显超出这个范围（如编程、娱乐八卦、数学计算等），礼貌拒绝：「抱歉，我专注于胰岛素抵抗和代谢健康领域，这个问题超出我的能力范围了哦～有什么饮食、运动或血糖管理方面的问题我可以帮到你吗？」\n3. 回答简洁实用，控制在200字以内，给出可操作的建议\n4. 基于中国饮食文化和生活习惯，建议接地气\n5. 不确定的事情说「建议咨询医生」，不要给医疗诊断' },
+      { role: 'user', content: text }
+    ];
+    callChatAPI(messages);
+  }
+
+  btn.addEventListener('click', send);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); send(); }
+  });
+}
+
+function callChatAPI(messages) {
+  fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiSettings.key
+    },
+    body: JSON.stringify({
+      model: apiSettings.model,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('API Key 无效');
+      if (res.status === 402) throw new Error('账户余额不足');
+      throw new Error('请求失败(' + res.status + ')');
+    }
+    return res.json();
+  })
+  .then(function(data) {
+    var reply = data.choices[0].message.content.trim();
+    // 替换占位消息
+    chatMessages[chatMessages.length - 1] = { role: 'assistant', content: reply };
+    saveChat();
+    renderChat();
+    scrollToBottom();
+  })
+  .catch(function(err) {
+    chatMessages[chatMessages.length - 1] = { role: 'assistant', content: '❌ ' + err.message + '，请稍后重试' };
+    saveChat();
+    renderChat();
+  });
+}
+
+function renderChat() {
+  var container = document.getElementById('chatMessages');
+  var btn = document.getElementById('chatSendBtn');
+  btn.disabled = false;
+
+  if (chatMessages.length === 0) {
+    container.innerHTML = '<div class="chat-welcome"><div class="chat-welcome-icon">🤖</div><div class="chat-welcome-text">我是你的胰岛素抵抗管理助手<br>可以问我饮食、运动、血糖、胰岛素抵抗相关的任何问题</div></div>';
+    return;
+  }
+  container.innerHTML = chatMessages.map(function(m) {
+    if (m.role === 'user') {
+      return '<div class="chat-bubble user">' + escapeHtml(m.content) + '</div>';
+    }
+    if (m.thinking) {
+      return '<div class="chat-bubble ai"><div class="chat-thinking">思考中<div class="dot-pulse"><span></span><span></span><span></span></div></div></div>';
+    }
+    return '<div class="chat-bubble ai">' + escapeHtml(m.content) + '</div>';
+  }).join('');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function scrollToBottom() {
+  var container = document.getElementById('chatMessages');
+  setTimeout(function() { container.scrollTop = container.scrollHeight; }, 50);
+}
+
+// ============================
 // 启动
 // ============================
+initChat();
 initCalendar();
 init();
 </script>
